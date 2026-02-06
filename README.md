@@ -62,7 +62,7 @@ npm run dev
 
 ### 5. Open in browser
 
-Navigate to [http://localhost:3000/index.html](http://localhost:3000/index.html)
+Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## Testing
 
@@ -75,7 +75,8 @@ For testing purposes, you can use Razorpay's test mode:
 
 ```
 demoPayment/
-├── index.html          # Frontend UI
+├── public/
+│   └── index.html      # Frontend UI
 ├── server.js           # Backend API server
 ├── package.json        # Dependencies
 ├── .env.example        # Environment variables template

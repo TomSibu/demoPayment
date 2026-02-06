@@ -17,7 +17,7 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static('public'));
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -121,5 +121,5 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`Open http://localhost:${PORT}/index.html in your browser`);
+    console.log(`Open http://localhost:${PORT} in your browser`);
 });
