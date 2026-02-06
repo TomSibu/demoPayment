@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Payment - Razorpay Gateway</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .product-card {
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .product-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .product-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .buy-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .buy-btn:hover {
+            opacity: 0.9;
+        }
+
+        .buy-btn:active {
+            transform: scale(0.98);
+        }
+
+        .powered-by {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .powered-by img {
+            height: 20px;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛍️ Demo Store</h1>
+        <p class="subtitle">Secure payment powered by Razorpay</p>
+
+        <div class="product-card">
+            <div class="product-name">Premium Product</div>
+            <div class="product-description">High-quality product with excellent features</div>
+            <div class="product-price">₹499</div>
+            <button class="buy-btn" onclick="initiatePayment(49900, 'Premium Product')">
+                Buy Now
+            </button>
+        </div>
+
+        <div class="product-card">
+            <div class="product-name">Standard Product</div>
+            <div class="product-description">Great value for everyday use</div>
+            <div class="product-price">₹299</div>
+            <button class="buy-btn" onclick="initiatePayment(29900, 'Standard Product')">
+                Buy Now
+            </button>
+        </div>
+
+        <div class="powered-by">
+            Powered by Razorpay
+        </div>
+    </div>
+
+    <script>
+        async function initiatePayment(amount, productName) {
+            try {
+                // Create order on server
+                const response = await fetch('http://localhost:3000/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        currency: 'INR',
+                        productName: productName
+                    })
+                });
+
+                const order = await response.json();
+
+                if (!order.id) {
+                    alert('Failed to create order. Please try again.');
+                    return;
+                }
+
+                // Initialize Razorpay
+                const options = {
+                    key: order.key, // Enter the Key ID generated from the Dashboard
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: 'Demo Store',
+                    description: productName,
+                    order_id: order.id,
+                    handler: function (response) {
+                        // Verify payment on server
+                        verifyPayment(response);
+                    },
+                    prefill: {
+                        name: '',
+                        email: '',
+                        contact: ''
+                    },
+                    theme: {
+                        color: '#667eea'
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (response) {
+                    alert('Payment failed: ' + response.error.description);
+                });
+
+                rzp.open();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        async function verifyPayment(paymentData) {
+            try {
+                const response = await fetch('http://localhost:3000/verify-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(paymentData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Payment successful! Thank you for your purchase.');
+                } else {
+                    alert('❌ Payment verification failed. Please contact support.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while verifying payment.');
+            }
+        }
+    </script>
+</body>
+</html>
