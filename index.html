@@ -145,7 +145,7 @@
         async function initiatePayment(amount, productName) {
             try {
                 // Create order on server
-                const response = await fetch('http://localhost:3000/create-order', {
+                const response = await fetch('/create-order', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -200,7 +200,7 @@
 
         async function verifyPayment(paymentData) {
             try {
-                const response = await fetch('http://localhost:3000/verify-payment', {
+                const response = await fetch('/verify-payment', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -7,6 +7,13 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Validate required environment variables
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('Error: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in .env file');
+    console.error('Please copy .env.example to .env and add your Razorpay credentials');
+    process.exit(1);
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -14,8 +21,8 @@ app.use(express.static('.'));
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'your_key_id',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'your_key_secret'
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
 // Create order endpoint
@@ -23,9 +30,20 @@ app.post('/create-order', async (req, res) => {
     try {
         const { amount, currency, productName } = req.body;
 
+        // Validate input
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({ error: 'Invalid amount. Must be a positive number.' });
+        }
+
+        const validCurrencies = ['INR', 'USD', 'EUR', 'GBP'];
+        const selectedCurrency = currency || 'INR';
+        if (!validCurrencies.includes(selectedCurrency)) {
+            return res.status(400).json({ error: 'Invalid currency. Supported: INR, USD, EUR, GBP' });
+        }
+
         const options = {
             amount: amount, // amount in paise
-            currency: currency || 'INR',
+            currency: selectedCurrency,
             receipt: `receipt_${Date.now()}`,
             notes: {
                 productName: productName
@@ -38,7 +56,7 @@ app.post('/create-order', async (req, res) => {
             id: order.id,
             amount: order.amount,
             currency: order.currency,
-            key: process.env.RAZORPAY_KEY_ID || 'your_key_id'
+            key: process.env.RAZORPAY_KEY_ID
         });
     } catch (error) {
         console.error('Error creating order:', error);
@@ -55,15 +73,24 @@ app.post('/verify-payment', (req, res) => {
             razorpay_signature
         } = req.body;
 
+        // Validate required fields
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required payment verification fields'
+            });
+        }
+
         // Create signature
         const sign = razorpay_order_id + '|' + razorpay_payment_id;
         const expectedSign = crypto
-            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'your_key_secret')
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
             .update(sign.toString())
             .digest('hex');
 
         // Verify signature
         if (razorpay_signature === expectedSign) {
+            console.log(`Payment verified successfully: ${razorpay_payment_id}`);
             res.json({
                 success: true,
                 message: 'Payment verified successfully',
@@ -71,7 +98,9 @@ app.post('/verify-payment', (req, res) => {
                 paymentId: razorpay_payment_id
             });
         } else {
-            res.json({
+            // Log failed verification attempt for security audit
+            console.warn(`Payment verification failed for order: ${razorpay_order_id}`);
+            res.status(401).json({
                 success: false,
                 message: 'Payment verification failed'
             });
